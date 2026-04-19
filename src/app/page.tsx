@@ -16,17 +16,28 @@ const floatingIcons = [
 export default function ElevateStudio() {
   const [opening, setOpening] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [fallbackMode, setFallbackMode] = useState(false);
   const [result, setResult] = useState("");
   const scannerRef = useRef<any>(null);
 
+  const canUseCamera =
+    typeof window !== "undefined" &&
+    window.isSecureContext &&
+    navigator.mediaDevices;
+
   const startScanner = async () => {
+    if (!canUseCamera) {
+      setFallbackMode(true);
+      return;
+    }
+
+    if (scannerRef.current) return;
+
     setOpening(true);
 
-    // Door animation duration
     setTimeout(() => {
       setScanning(true);
 
-      // Start camera slightly after scanner mounts
       setTimeout(async () => {
         try {
           const scanner = new Html5Qrcode("reader");
@@ -43,9 +54,9 @@ export default function ElevateStudio() {
           );
         } catch (err) {
           console.error(err);
+          setFallbackMode(true);
           setScanning(false);
           setOpening(false);
-          alert("Camera access failed. Use HTTPS.");
         }
       }, 300);
     }, 1100);
@@ -60,9 +71,20 @@ export default function ElevateStudio() {
     setOpening(false);
   };
 
+  // 📂 Fallback image scan
+  const handleFileScan = async (file: File) => {
+    try {
+      const scanner = new Html5Qrcode("reader");
+      const result = await scanner.scanFile(file, true);
+      setResult(result);
+    } catch (err) {
+      alert("Could not scan this image.");
+    }
+  };
+
   return (
     <main className="relative min-h-screen w-full flex flex-col items-center justify-center bg-[#D2D6C6] overflow-hidden font-serif">
-      
+
       {/* Floating Background */}
       <div className="absolute inset-0 pointer-events-none">
         {floatingIcons.map((icon) => (
@@ -80,123 +102,95 @@ export default function ElevateStudio() {
         ))}
       </div>
 
-      {/* Main Content */}
+      {/* Main */}
       <div className="z-10 text-center flex flex-col items-center gap-8 px-6 w-full max-w-md">
         <Image
           src="/images/elevate-studio-logo.png"
           alt="Elevate Studio"
           width={400}
           height={200}
-          className="mx-auto drop-shadow-sm"
         />
 
         <AnimatePresence mode="wait">
 
-          {/* START BUTTON */}
-          {!opening && !scanning && (
+          {/* START */}
+          {!opening && !scanning && !fallbackMode && (
             <motion.button
               key="start"
               onClick={startScanner}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8 }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="px-12 py-3 bg-white text-[#8B4513] rounded-full text-xl font-medium tracking-widest border-2 border-[#8B4513]/20 shadow-lg"
+              className="px-12 py-3 bg-white text-[#8B4513] rounded-full text-xl border shadow-lg"
             >
               START
             </motion.button>
           )}
 
-          {/* 🚪 DOOR ANIMATION */}
+          {/* 🚪 Door Animation */}
           {opening && !scanning && (
-            <motion.div
-              key="door"
-              className="fixed inset-0 z-50 flex"
-              initial={{ opacity: 1 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              {/* LEFT DOOR */}
+            <div className="fixed inset-0 z-50 flex">
               <motion.div
-                initial={{ x: 0 }}
                 animate={{ x: "-100%" }}
-                transition={{ duration: 1.1, ease: "easeInOut" }}
-                className="w-1/2 h-full bg-[#8B4513] flex items-center justify-end pr-4 shadow-inner"
-              >
-                <div className="w-2 h-24 bg-white/30 rounded-full" />
-              </motion.div>
-
-              {/* RIGHT DOOR */}
+                transition={{ duration: 1.1 }}
+                className="w-1/2 h-full bg-[#8B4513]"
+              />
               <motion.div
-                initial={{ x: 0 }}
                 animate={{ x: "100%" }}
-                transition={{ duration: 1.1, ease: "easeInOut" }}
-                className="w-1/2 h-full bg-[#8B4513] flex items-center justify-start pl-4 shadow-inner"
-              >
-                <div className="w-2 h-24 bg-white/30 rounded-full" />
-              </motion.div>
+                transition={{ duration: 1.1 }}
+                className="w-1/2 h-full bg-[#8B4513]"
+              />
+            </div>
+          )}
+
+          {/* 📷 Camera Scanner */}
+          {scanning && (
+            <motion.div className="w-full">
+              <div className="relative mx-auto w-full max-w-[300px] aspect-square bg-black rounded-3xl overflow-hidden">
+                <div id="reader" className="w-full h-full" />
+              </div>
+
+              <button onClick={stopScanner} className="mt-4 underline">
+                Cancel
+              </button>
             </motion.div>
           )}
 
-          {/* 📷 SCANNER */}
-          {scanning && (
+          {/* 📂 Fallback Upload */}
+          {fallbackMode && (
             <motion.div
-              key="scanner"
-              initial={{ opacity: 0, scale: 0.85 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.4 }}
-              className="relative w-full"
+              key="fallback"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-col items-center gap-4"
             >
-              <div className="relative mx-auto w-full aspect-square max-w-[300px] rounded-[2.5rem] overflow-hidden border-8 border-white shadow-2xl bg-black">
-                <div id="reader" className="w-full h-full" />
+              <p className="text-[#8B4513]">
+                Camera not available. Upload QR image:
+              </p>
 
-                {/* Lens overlay */}
-                <div className="absolute inset-0 pointer-events-none border-[30px] border-black/30" />
-
-                {/* Scan line */}
-                <motion.div 
-                  animate={{ top: ["10%", "90%", "10%"] }}
-                  transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-                  className="absolute left-0 right-0 h-[2px] bg-[#8B4513] shadow-[0_0_15px_#8B4513]"
-                />
-
-                {/* Corners */}
-                <div className="absolute top-6 left-6 w-4 h-4 border-t-2 border-l-2 border-white/80" />
-                <div className="absolute top-6 right-6 w-4 h-4 border-t-2 border-r-2 border-white/80" />
-                <div className="absolute bottom-6 left-6 w-4 h-4 border-b-2 border-l-2 border-white/80" />
-                <div className="absolute bottom-6 right-6 w-4 h-4 border-b-2 border-r-2 border-white/80" />
-              </div>
-
-              <button 
-                onClick={stopScanner}
-                className="mt-6 text-[#8B4513] font-medium underline underline-offset-4 opacity-70"
-              >
-                Cancel Scan
-              </button>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  if (e.target.files?.[0]) {
+                    handleFileScan(e.target.files[0]);
+                  }
+                }}
+                className="block"
+              />
             </motion.div>
           )}
         </AnimatePresence>
 
         {/* RESULT */}
-        <AnimatePresence>
-          {result && (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white/90 backdrop-blur-md px-6 py-3 rounded-2xl border border-[#8B4513]/20"
-            >
-              <p className="text-[#8B4513] font-semibold">
-                Successfully Scanned:{" "}
-                <span className="text-black font-mono">{result}</span>
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {result && (
+          <div className="bg-white p-3 rounded-xl">
+            <p className="text-[#8B4513]">
+              Result: <span className="text-black">{result}</span>
+            </p>
+          </div>
+        )}
 
       </div>
-
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/10 to-transparent pointer-events-none" />
     </main>
   );
 }
