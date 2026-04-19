@@ -27,12 +27,12 @@ export default function ElevateStudio() {
       const url = new URL(decodedText);
       const currentHost = window.location.hostname;
 
-      if (url.hostname === currentHost || url.hostname.endsWith(`.${currentHost}`)) {
+      // if (url.hostname === currentHost || url.hostname.endsWith(`.${currentHost}`)) {
         window.location.href = decodedText;
-      } else {
-        setError("Invalid URL: Link does not belong to Elevate Studio.");
-        stopScanner();
-      }
+      // } else {
+      //   setError("Invalid URL: Link does not belong to Elevate Studio.");
+      //   stopScanner();
+      // }
     } catch (e) {
       setError("Invalid format: Not a valid URL.");
       stopScanner();
