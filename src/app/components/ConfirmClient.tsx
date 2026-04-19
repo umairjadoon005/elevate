@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect } from "react"; // 1. Import useEffect
+import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
+import Link from "next/link"; // Import Link for navigation
 
 const ROOM_DATA: Record<string, { room: string; time: string }> = {
   ground: { room: "Ground (Room 1)", time: "Starts Now" },
@@ -15,7 +16,6 @@ export default function ConfirmClient() {
   const choice = searchParams.get("choice") || "align";
   const data = ROOM_DATA[choice];
 
-  // 2. Save choice to localStorage on mount/change
   useEffect(() => {
     if (choice) {
       localStorage.setItem("selected_choice", choice);
@@ -35,7 +35,6 @@ export default function ConfirmClient() {
           <div className="space-y-2">
             <span className="text-5xl">🧘</span>
             <h1 className="text-3xl text-[#5C2E0E]">You're Confirmed.</h1>
-            {/* <p className="text-[#5C2E0E]/60 italic capitalize">{choice} Experience</p> */}
           </div>
 
           <hr className="border-[#D2D6C6]/30" />
@@ -48,6 +47,19 @@ export default function ConfirmClient() {
           <p className="text-sm text-[#5C2E0E]/40 font-sans">
             Please present this screen to your instructor upon arrival.
           </p>
+
+          {/* --- Event Completed Button --- */}
+          <div className="pt-4">
+            <Link href="/reward" passHref>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full bg-[#5C2E0E] text-[#D2D6C6] py-4 rounded-2xl font-sans font-bold tracking-widest uppercase text-xs transition-colors hover:bg-[#4a250b] shadow-lg"
+              >
+                Event Completed
+              </motion.button>
+            </Link>
+          </div>
         </div>
       </motion.div>
     </main>

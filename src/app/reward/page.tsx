@@ -35,7 +35,7 @@ export default function RewardPage() {
 
   const fetchRewards = async () => {
     try {
-      const res = await axios.get("http://127.0.0.1:8000/api/rewards");
+      const res = await axios.get("https://elevate.synetalsolutions.co/public/api/rewards");
       setRewards(res.data);
 
       const colors = res.data.map((_: any, i: number) => {

@@ -6,7 +6,7 @@ import RewardModal from "../../components/RewardModal";
 import AppLayout from "@/app/components/AppLayout";
 
 export default function RewardsPage() {
-  const API = "http://127.0.0.1:8000/api/rewards";
+  const API = "https://elevate.synetalsolutions.co/public/api/rewards";
 
   const [rewards, setRewards] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);

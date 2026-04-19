@@ -12,7 +12,7 @@ export default function AdminLogin() {
     try {
       setError(""); // reset
 
-      const res = await axios.post("http://127.0.0.1:8000/api/admin/login", {
+      const res = await axios.post("https://elevate.synetalsolutions.co/public/api/admin/login", {
         email,
         password,
       });

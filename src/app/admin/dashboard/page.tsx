@@ -6,7 +6,7 @@ import EventModal from "../../components/EventsModal";
 import AppLayout from "@/app/components/AppLayout";
 
 export default function Dashboard() {
-  const API = "http://127.0.0.1:8000/api/events";
+  const API = "https://elevate.synetalsolutions.co/public/api/events";
 
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -148,7 +148,7 @@ export default function Dashboard() {
                   <div className="relative">
                     <div className="relative bg-white p-2 rounded-lg shadow-md">
                       <img
-                        src={`http://127.0.0.1:8000/api/events/qr/${event.slug}`}
+                        src={`https://elevate.synetalsolutions.co/public/api/events/qr/${event.slug}`}
                         alt="Event QR"
                         className="w-20 h-20 object-contain"
                       />
