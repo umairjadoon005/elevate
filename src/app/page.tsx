@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { Html5Qrcode } from "html5-qrcode";
@@ -17,27 +17,38 @@ export default function ElevateStudio() {
   const [opening, setOpening] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [fallbackMode, setFallbackMode] = useState(false);
-  const [result, setResult] = useState("");
-  const scannerRef = useRef<any>(null);
+  const [error, setError] = useState("");
+  const scannerRef = useRef<Html5Qrcode | null>(null);
 
-  const canUseCamera =
-    typeof window !== "undefined" &&
-    window.isSecureContext &&
-    navigator.mediaDevices;
+  const canUseCamera = typeof window !== "undefined" && window.isSecureContext && navigator.mediaDevices;
+
+  const handleScanResult = (decodedText: string) => {
+    try {
+      const url = new URL(decodedText);
+      const currentHost = window.location.hostname;
+
+      if (url.hostname === currentHost || url.hostname.endsWith(`.${currentHost}`)) {
+        window.location.href = decodedText;
+      } else {
+        setError("Invalid URL: Link does not belong to Elevate Studio.");
+        stopScanner();
+      }
+    } catch (e) {
+      setError("Invalid format: Not a valid URL.");
+      stopScanner();
+    }
+  };
 
   const startScanner = async () => {
+    setError("");
     if (!canUseCamera) {
       setFallbackMode(true);
       return;
     }
-
-    if (scannerRef.current) return;
-
     setOpening(true);
 
     setTimeout(() => {
       setScanning(true);
-
       setTimeout(async () => {
         try {
           const scanner = new Html5Qrcode("reader");
@@ -45,15 +56,18 @@ export default function ElevateStudio() {
 
           await scanner.start(
             { facingMode: "environment" },
-            { fps: 10, qrbox: { width: 250, height: 250 } },
-            (decodedText) => {
-              setResult(decodedText);
-              stopScanner();
+            { 
+              fps: 20, 
+              // Setting qrbox to a larger percentage or removing fixed constraints helps full frame
+              qrbox: (viewfinderWidth, viewfinderHeight) => {
+                return { width: viewfinderWidth * 0.7, height: viewfinderWidth * 0.7 };
+              },
+              aspectRatio: 1.0 // Force square aspect for the logic
             },
+            (decodedText) => handleScanResult(decodedText),
             () => {}
           );
         } catch (err) {
-          console.error(err);
           setFallbackMode(true);
           setScanning(false);
           setOpening(false);
@@ -64,26 +78,25 @@ export default function ElevateStudio() {
 
   const stopScanner = async () => {
     if (scannerRef.current) {
-      await scannerRef.current.stop();
+      try { await scannerRef.current.stop(); } catch (e) {}
       scannerRef.current = null;
     }
     setScanning(false);
     setOpening(false);
   };
 
-  // 📂 Fallback image scan
-  const handleFileScan = async (file: File) => {
-    try {
-      const scanner = new Html5Qrcode("reader");
-      const result = await scanner.scanFile(file, true);
-      setResult(result);
-    } catch (err) {
-      alert("Could not scan this image.");
-    }
-  };
-
   return (
     <main className="relative min-h-screen w-full flex flex-col items-center justify-center bg-[#D2D6C6] overflow-hidden font-serif">
+      
+      {/* CSS Hack for Full Frame Video */}
+      <style jsx global>{`
+        #reader video {
+          object-fit: cover !important;
+          width: 100% !important;
+          height: 100% !important;
+          border-radius: 32px;
+        }
+      `}</style>
 
       {/* Floating Background */}
       <div className="absolute inset-0 pointer-events-none">
@@ -102,94 +115,65 @@ export default function ElevateStudio() {
         ))}
       </div>
 
-      {/* Main */}
       <div className="z-10 text-center flex flex-col items-center gap-8 px-6 w-full max-w-md">
-        <Image
-          src="/images/elevate-studio-logo.png"
-          alt="Elevate Studio"
-          width={400}
-          height={200}
-        />
+        <Image src="/images/elevate-studio-logo.png" alt="Elevate Studio" width={400} height={200} />
 
         <AnimatePresence mode="wait">
-
-          {/* START */}
           {!opening && !scanning && !fallbackMode && (
-            <motion.button
-              key="start"
-              onClick={startScanner}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="px-12 py-3 bg-white text-[#8B4513] rounded-full text-xl border shadow-lg"
-            >
-              START
-            </motion.button>
+            <motion.div key="start-container" className="flex flex-col items-center gap-4">
+              <motion.button
+                onClick={startScanner}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="px-12 py-3 bg-white text-[#8B4513] rounded-full text-xl border shadow-lg"
+              >
+                START
+              </motion.button>
+              {error && (
+                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[#8B4513] font-bold mt-2">
+                  {error}
+                </motion.p>
+              )}
+            </motion.div>
           )}
 
-          {/* 🚪 Door Animation */}
+          {/* Door Animation */}
           {opening && !scanning && (
             <div className="fixed inset-0 z-50 flex">
-              <motion.div
-                animate={{ x: "-100%" }}
-                transition={{ duration: 1.1 }}
-                className="w-1/2 h-full bg-[#8B4513]"
-              />
-              <motion.div
-                animate={{ x: "100%" }}
-                transition={{ duration: 1.1 }}
-                className="w-1/2 h-full bg-[#8B4513]"
-              />
+              <motion.div animate={{ x: "-100%" }} transition={{ duration: 1.1, ease: "easeInOut" }} className="w-1/2 h-full bg-[#8B4513]" />
+              <motion.div animate={{ x: "100%" }} transition={{ duration: 1.1, ease: "easeInOut" }} className="w-1/2 h-full bg-[#8B4513]" />
             </div>
           )}
 
-          {/* 📷 Camera Scanner */}
+          {/* Full Frame Elegant Scanner */}
           {scanning && (
-            <motion.div className="w-full">
-              <div className="relative mx-auto w-full max-w-[300px] aspect-square bg-black rounded-3xl overflow-hidden">
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="w-full flex flex-col items-center">
+              <div className="relative w-[300px] h-[300px] bg-black rounded-[40px] shadow-2xl overflow-hidden border-4 border-white">
+                
+                {/* The actual scanner element */}
                 <div id="reader" className="w-full h-full" />
+                
+                {/* Visual "Laser" Overlay */}
+                <div className="absolute inset-0 pointer-events-none z-20">
+                  <motion.div 
+                    animate={{ top: ["10%", "90%", "10%"] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                    className="absolute left-0 right-0 h-[2px] bg-red-500 shadow-[0_0_15px_red]"
+                  />
+                  {/* Viewfinder corners */}
+                  <div className="absolute top-10 left-10 w-10 h-10 border-t-2 border-l-2 border-white/70" />
+                  <div className="absolute top-10 right-10 w-10 h-10 border-t-2 border-r-2 border-white/70" />
+                  <div className="absolute bottom-10 left-10 w-10 h-10 border-b-2 border-l-2 border-white/70" />
+                  <div className="absolute bottom-10 right-10 w-10 h-10 border-b-2 border-r-2 border-white/70" />
+                </div>
               </div>
 
-              <button onClick={stopScanner} className="mt-4 underline">
+              <button onClick={stopScanner} className="mt-8 text-[#8B4513] underline text-lg">
                 Cancel
               </button>
             </motion.div>
           )}
-
-          {/* 📂 Fallback Upload */}
-          {fallbackMode && (
-            <motion.div
-              key="fallback"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex flex-col items-center gap-4"
-            >
-              <p className="text-[#8B4513]">
-                Camera not available. Upload QR image:
-              </p>
-
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  if (e.target.files?.[0]) {
-                    handleFileScan(e.target.files[0]);
-                  }
-                }}
-                className="block"
-              />
-            </motion.div>
-          )}
         </AnimatePresence>
-
-        {/* RESULT */}
-        {result && (
-          <div className="bg-white p-3 rounded-xl">
-            <p className="text-[#8B4513]">
-              Result: <span className="text-black">{result}</span>
-            </p>
-          </div>
-        )}
-
       </div>
     </main>
   );
