@@ -4,17 +4,26 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { motion } from "framer-motion";
 
+// Define the shape of your Reward data
+interface Reward {
+  title: string;
+  code: string;
+}
+
+interface PaletteColor {
+  start: string;
+  end: string;
+}
+
 export default function RewardPage() {
-  const [rewards, setRewards] = useState<any[]>([]);
-  const [sliceColors, setSliceColors] = useState<any[]>([]);
+  const [rewards, setRewards] = useState<Reward[]>([]);
+  const [sliceColors, setSliceColors] = useState<PaletteColor[]>([]);
   const [rotation, setRotation] = useState(0);
   const [spinning, setSpinning] = useState(false);
-  const [selectedReward, setSelectedReward] = useState<any>(null);
-  // Track if we've checked storage to prevent flicker
+  const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    // 1. Check LocalStorage on mount
     const savedReward = localStorage.getItem("userReward");
     if (savedReward) {
       setSelectedReward(JSON.parse(savedReward));
@@ -24,8 +33,7 @@ export default function RewardPage() {
     setIsInitialized(true);
   }, []);
 
-  // 🎨 Premium Brown Gradient Palette
-  const brownPalette = [
+  const brownPalette: PaletteColor[] = [
     { start: "#8B4513", end: "#2C1810" },
     { start: "#A0522D", end: "#5C2E0E" },
     { start: "#C19A6B", end: "#7B4B2A" },
@@ -36,11 +44,10 @@ export default function RewardPage() {
   const fetchRewards = async () => {
     try {
       const res = await axios.get("https://elevate.synetalsolutions.co/public/api/rewards");
-      setRewards(res.data);
+      const data: Reward[] = res.data;
+      setRewards(data);
 
-      const colors = res.data.map((_: any, i: number) => {
-        return brownPalette[i % brownPalette.length];
-      });
+      const colors = data.map((_, i) => brownPalette[i % brownPalette.length]);
       setSliceColors(colors);
     } catch (error) {
       console.error("Failed to fetch rewards", error);
@@ -52,9 +59,7 @@ export default function RewardPage() {
 
     const randomIndex = Math.floor(Math.random() * rewards.length);
     const segmentAngle = 360 / rewards.length;
-
-    const finalRotation =
-      360 * 6 + (360 - randomIndex * segmentAngle - segmentAngle / 2);
+    const finalRotation = 360 * 6 + (360 - randomIndex * segmentAngle - segmentAngle / 2);
 
     setSpinning(true);
     setRotation(finalRotation);
@@ -63,13 +68,10 @@ export default function RewardPage() {
       const win = rewards[randomIndex];
       setSelectedReward(win);
       setSpinning(false);
-      
-      // 2. Save to LocalStorage after spin finishes
       localStorage.setItem("userReward", JSON.stringify(win));
     }, 4500);
   };
 
-  // Helper functions for SVG generation (kept as is)
   const polarToCartesian = (cx: number, cy: number, r: number, angle: number) => {
     const rad = ((angle - 90) * Math.PI) / 180.0;
     return {
@@ -84,15 +86,13 @@ export default function RewardPage() {
     const start = polarToCartesian(center, center, radius, endAngle);
     const end = polarToCartesian(center, center, radius, startAngle);
     const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
-
     return `M ${center} ${center} L ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} 0 ${end.x} ${end.y} Z`;
   };
 
-  // Prevent hydration mismatch by returning null until initialized
-  if (!isInitialized) return <div className="min-h-screen bg-[#D2D6C6]" />;
+  if (!isInitialized) return <div className="min-h-screen " />;
 
   return (
-    <main className="min-h-screen bg-[#D2D6C6] flex items-center justify-center p-8">
+    <main className="min-h-screen  flex items-center justify-center p-8">
       <div className="bg-white rounded-[3rem] p-10 text-center shadow-2xl max-w-sm w-full border-t-8 border-[#8B4513]">
         {!selectedReward ? (
           <>
@@ -115,10 +115,6 @@ export default function RewardPage() {
                       <stop offset="100%" stopColor={g.end} />
                     </linearGradient>
                   ))}
-                  <radialGradient id="shine">
-                    <stop offset="0%" stopColor="#ffffff" stopOpacity="0.4" />
-                    <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
-                  </radialGradient>
                 </defs>
 
                 {rewards.map((reward, i) => {
@@ -134,16 +130,23 @@ export default function RewardPage() {
                         strokeWidth="2"
                       />
                       <text
-                        x="150" y="150" fill="#fff" fontSize="11" fontWeight="600" textAnchor="middle" dominantBaseline="middle"
+                        x="150" y="150" fill="#fff" fontSize="12" fontWeight="600" textAnchor="middle" dominantBaseline="middle"
                         transform={`rotate(${startAngle + angle / 2} 150 150) translate(0 -105)`}
                       >
-                        {reward.title}
+                        {/* FIXED: Added types for word and index here */}
+                        {reward.title.split(" ").map((word: string, index: number) => (
+                          <tspan
+                            key={index}
+                            x="150"
+                            dy={index === 0 ? "0" : "1.2em"}
+                          >
+                            {word}
+                          </tspan>
+                        ))}
                       </text>
                     </g>
                   );
                 })}
-                <circle cx="150" cy="150" r="140" fill="url(#shine)" />
-                <circle cx="150" cy="150" r="40" fill="white" fillOpacity="0.15" stroke="white" strokeOpacity="0.2" />
               </motion.svg>
 
               <button
@@ -160,13 +163,12 @@ export default function RewardPage() {
             <span className="text-6xl mb-6 block">🎉</span>
             <h1 className="text-[#5C2E0E] text-3xl mb-4 font-serif">You Won!</h1>
             <p className="text-[#5C2E0E]/70 mb-6">{selectedReward.title}</p>
-            <div className="bg-[#D2D6C6]/20 border-2 border-dashed border-[#5C2E0E]/20 p-5 rounded-2xl">
-              <span className="block text-[10px] uppercase tracking-widest opacity-50 mb-1">Redeem Code</span>
+            <div className="/20 border-2 border-dashed border-[#5C2E0E]/20 p-5 rounded-2xl">
+              <span className="block text-[10px] tracking-widest opacity-50 mb-1">Collect voucher from our staff.</span>
               <span className="text-xl font-bold text-[#5C2E0E]">{selectedReward.code}</span>
             </div>
           </motion.div>
         )}
-
         <p className="mt-8 text-[10px] uppercase tracking-[0.2em] opacity-30">
           Elevate Studio • Wellness Club
         </p>

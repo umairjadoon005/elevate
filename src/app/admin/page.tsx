@@ -25,8 +25,8 @@ export default function AdminLogin() {
       if (err.response?.data?.error) {
         setError(err.response.data.error);
       } else {
-        setError("Something went wrong");
-      }
+    setError(err.message || "An unexpected error occurred");
+  }
     }
 
   };
